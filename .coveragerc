@@ -1,0 +1,9 @@
+[run]
+branch = True
+data_file = .coverage
+source=openedx_events_2_zapier
+omit =
+    *migrations*
+    *admin.py
+    *static*
+    *templates*

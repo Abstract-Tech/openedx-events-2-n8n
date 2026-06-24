@@ -1,0 +1,7 @@
+# Core requirements for using this application
+-c constraints.txt
+
+django                   # Web application framework
+openedx-events           # Open edX Events package
+requests
+celery
