@@ -1,7 +1,9 @@
 """This file contains all test for the tasks.py file."""
 
+import json
 from datetime import datetime, timezone
 from unittest.mock import patch
+from uuid import UUID
 
 from attr import asdict
 from ddt import data, ddt, unpack
@@ -131,7 +133,7 @@ class SendDataToN8nTaskTest(TestCase):
                 "enrollment_course_end": None,
                 "enrollment_mode": "audit",
                 "enrollment_is_active": True,
-                "enrollment_creation_date": datetime(2021, 9, 21, 17, 40, 27),
+                "enrollment_creation_date": "2021-09-21T17:40:27",
                 "enrollment_created_by": None,
                 "event_metadata_event_type": "org.openedx.learning.course.enrollment.created.v1",
                 "event_metadata_minorversion": 0,
@@ -176,12 +178,12 @@ class SendDataToN8nTaskTest(TestCase):
                 "grade_user_id": 42,
                 "grade_course_course_key": "course-v1:edX+100+2021",
                 "grade_course_display_name": "Demonstration Course",
-                "grade_course_edited_timestamp": datetime(2021, 9, 21, 17, 40, 27),
+                "grade_course_edited_timestamp": "2021-09-21T17:40:27",
                 "grade_course_version": "",
                 "grade_grading_policy_hash": "",
                 "grade_percent_grade": 80,
                 "grade_letter_grade": "Great",
-                "grade_passed_timestamp": datetime(2021, 9, 21, 17, 40, 27),
+                "grade_passed_timestamp": "2021-09-21T17:40:27",
                 "event_metadata_event_type": "org.openedx.learning.course.persistent_grade_summary.changed.v1",
                 "event_metadata_minorversion": 0,
                 "event_metadata_source": "openedx/lms/web",
@@ -203,6 +205,7 @@ class SendDataToN8nTaskTest(TestCase):
         """
         send_data_to_n8n(webhook_url, payload)  # pylint: disable=no-value-for-parameter
 
+        json.dumps(post_mock.call_args.kwargs["json"])
         self.assertLessEqual(
             expected_payload.items(),
             post_mock.call_args.kwargs["json"].items(),
@@ -211,6 +214,23 @@ class SendDataToN8nTaskTest(TestCase):
         self.assertEqual(
             post_mock.call_args.kwargs["timeout"],
             5,
+        )
+
+    @patch("openedx_events_2_n8n.tasks.post")
+    def test_send_data_to_n8n_serializes_uuid_values(self, post_mock):
+        """
+        Test that UUID values are serialized before the request is made.
+        """
+        event_id = UUID("b1be2fac-1af1-11ec-bdf4-0242ac12000b")
+
+        send_data_to_n8n(  # pylint: disable=no-value-for-parameter
+            "https://webhook.site",
+            {"event_metadata": {"id": event_id}},
+        )
+
+        self.assertEqual(
+            post_mock.call_args.kwargs["json"]["event_metadata_id"],
+            str(event_id),
         )
 
     @patch("openedx_events_2_n8n.tasks.post")

@@ -2,8 +2,10 @@
 Utilities used by Open edX Events handlers.
 """
 
+import json
 from collections.abc import MutableMapping
 
+from django.core.serializers.json import DjangoJSONEncoder
 from opaque_keys.edx.locator import CourseLocator
 
 
@@ -22,6 +24,13 @@ def flatten_dict(dictionary, parent_key="", sep="_"):
         else:
             items.append((new_key, value))
     return dict(items)
+
+
+def make_json_serializable(data):
+    """
+    Convert Django/Open edX event data into plain JSON-compatible values.
+    """
+    return json.loads(json.dumps(data, cls=DjangoJSONEncoder))
 
 
 def serialize_course_key(inst, field, value):  # pylint: disable=unused-argument

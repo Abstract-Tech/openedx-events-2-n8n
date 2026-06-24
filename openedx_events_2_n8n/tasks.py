@@ -5,7 +5,7 @@ import logging
 from celery import shared_task
 from requests import exceptions, post
 
-from openedx_events_2_n8n.utils import flatten_dict
+from openedx_events_2_n8n.utils import flatten_dict, make_json_serializable
 
 N8N_REQUEST_TIMEOUT = 5
 N8N_RETRY_COUNTDOWN = 3
@@ -27,7 +27,7 @@ def send_data_to_n8n(self, webhook_url, data):  # pylint: disable=unused-argumen
         webhook_url: The URL of the n8n webhook.
         data: The data to send to the webhook.
     """
-    flattened_data = flatten_dict(data)
+    flattened_data = make_json_serializable(flatten_dict(data))
     try:
         log.info("Sending data to n8n: %s", flattened_data)
         post(webhook_url, json=flattened_data, timeout=N8N_REQUEST_TIMEOUT)
