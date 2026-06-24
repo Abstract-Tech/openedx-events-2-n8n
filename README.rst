@@ -23,9 +23,21 @@ By sending key event data to n8n, Open edX users can leverage the integration ec
 Getting Started with Development
 ********************************
 
-Please see the Open edX documentation for `guidance on Python development`_ in this repo.
+Please first see the Open edX documentation for `guidance on Python development`_ in this repo.
 
 .. _guidance on Python development: https://docs.openedx.org/en/latest/developers/how-tos/get-ready-for-python-dev.html
+
+Then follow the steps below to set up your development environment:
+
+.. code-block:: python
+
+    # Clone the repository
+    git clone git@github.com:Abstract-Tech/openedx-events-2-n8n.git
+    # Mount it to lms container
+    tutor mounts add openedx-events-2-n8n /openedx-events-2-n8n
+    # Install dependencies
+    tutor local run lms pip install -e /openedx-events-2-n8n
+
 
 Deploying
 *********
