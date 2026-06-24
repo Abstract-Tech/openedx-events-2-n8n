@@ -10,6 +10,8 @@ Purpose
 
 This repository demonstrates how to connect Open edX registration, enrollment, and grade change events to external tools via n8n, enabling easier automation workflows through this third-party service.
 
+This project is based on the original Open edX Events 2 Zapier project and has been adapted by Abstract Technology to send events to n8n webhooks.
+
 Open edX Events are a powerful feature that allows developers to listen to key events in the Open edX platform and trigger custom actions based on them. This can be useful for a variety of use cases, such as:
 
 - Sending welcome emails to new users
