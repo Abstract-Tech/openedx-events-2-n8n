@@ -30,7 +30,15 @@ DATABASES = {
 }
 
 
-INSTALLED_APPS = ("openedx_events",)
+INSTALLED_APPS = (
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.messages",
+    "django.contrib.sessions",
+    "openedx_events",
+    "openedx_events_2_n8n",
+)
 
 SECRET_KEY = "not-so-secret-key"
 

@@ -77,6 +77,7 @@ setup(
     url="https://github.com/Abstract-Tech/openedx-events-2-n8n",
     packages=[
         "openedx_events_2_n8n",
+        "openedx_events_2_n8n.migrations",
         "openedx_events_2_n8n.settings",
         "openedx_events_2_n8n.tests",
     ],

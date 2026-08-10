@@ -12,7 +12,7 @@ from openedx_events.learning.signals import (
 )
 
 from openedx_events_2_n8n.tasks import send_data_to_n8n
-from openedx_events_2_n8n.utils import serialize_course_key
+from openedx_events_2_n8n.utils import get_webhook_url, serialize_course_key
 
 
 @receiver(STUDENT_REGISTRATION_COMPLETED)
@@ -53,7 +53,10 @@ def send_user_data_to_webhook(
         "user": asdict(user),
         "event_metadata": asdict(metadata),
     }
-    send_data_to_n8n.delay(settings.N8N_REGISTRATION_WEBHOOK, n8n_payload)
+    send_data_to_n8n.delay(
+        get_webhook_url(metadata.event_type, settings.N8N_REGISTRATION_WEBHOOK),
+        n8n_payload,
+    )
 
 
 @receiver(COURSE_ENROLLMENT_CREATED)
@@ -101,7 +104,10 @@ def send_enrollment_data_to_webhook(
         "enrollment": asdict(enrollment, value_serializer=serialize_course_key),
         "event_metadata": asdict(metadata),
     }
-    send_data_to_n8n.delay(settings.N8N_ENROLLMENT_WEBHOOK, n8n_payload)
+    send_data_to_n8n.delay(
+        get_webhook_url(metadata.event_type, settings.N8N_ENROLLMENT_WEBHOOK),
+        n8n_payload,
+    )
 
 
 @receiver(PERSISTENT_GRADE_SUMMARY_CHANGED)
@@ -146,5 +152,9 @@ def send_persistent_grade_course_data_to_webhook(
         "event_metadata": asdict(metadata),
     }
     send_data_to_n8n.delay(
-        settings.N8N_PERSISTENT_GRADE_COURSE_WEBHOOK, n8n_payload
+        get_webhook_url(
+            metadata.event_type,
+            settings.N8N_PERSISTENT_GRADE_COURSE_WEBHOOK,
+        ),
+        n8n_payload,
     )
