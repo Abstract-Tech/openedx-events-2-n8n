@@ -25,6 +25,7 @@ from openedx_events_2_n8n.handlers import (
     send_persistent_grade_course_data_to_webhook,
     send_user_data_to_webhook,
 )
+from openedx_events_2_n8n.models import WebhookConfig
 from openedx_events_2_n8n.utils import serialize_course_key
 
 
@@ -84,6 +85,49 @@ class RegistrationCompletedReceiverTest(TestCase):
                 "id": task_mock.delay.call_args[0][1]["event_metadata"]["id"],
                 "time": task_mock.delay.call_args[0][1]["event_metadata"]["time"],
             },
+        )
+        self.assertEqual(task_mock.delay.call_args[0][0], "https://webhook.site")
+
+    @override_settings(N8N_REGISTRATION_WEBHOOK="https://settings.example.com/webhook")
+    @patch("openedx_events_2_n8n.handlers.send_data_to_n8n")
+    def test_receiver_prefers_database_webhook_url(self, task_mock):
+        """An active DB override should win over the settings fallback."""
+        WebhookConfig.objects.create(
+            event=self.metadata.event_type,
+            url="https://db.example.com/webhook",
+        )
+
+        send_user_data_to_webhook(
+            signal=STUDENT_REGISTRATION_COMPLETED,
+            sender=None,
+            user=self.user,
+            metadata=self.metadata,
+        )
+
+        self.assertEqual(task_mock.delay.call_args[0][0], "https://db.example.com/webhook")
+
+    @override_settings(N8N_REGISTRATION_WEBHOOK="https://settings.example.com/webhook")
+    @patch("openedx_events_2_n8n.handlers.send_data_to_n8n")
+    def test_receiver_falls_back_to_settings_when_database_override_is_inactive(
+        self, task_mock
+    ):
+        """Inactive DB rows should not override the settings value."""
+        WebhookConfig.objects.create(
+            event=self.metadata.event_type,
+            url="https://db.example.com/webhook",
+            is_active=False,
+        )
+
+        send_user_data_to_webhook(
+            signal=STUDENT_REGISTRATION_COMPLETED,
+            sender=None,
+            user=self.user,
+            metadata=self.metadata,
+        )
+
+        self.assertEqual(
+            task_mock.delay.call_args[0][0],
+            "https://settings.example.com/webhook",
         )
 
 
@@ -155,6 +199,49 @@ class EnrollmentCreatedReceiverTest(TestCase):
                 "time": task_mock.delay.call_args[0][1]["event_metadata"]["time"],
             },
         )
+        self.assertEqual(task_mock.delay.call_args[0][0], "https://webhook.site")
+
+    @override_settings(N8N_ENROLLMENT_WEBHOOK="https://settings.example.com/webhook")
+    @patch("openedx_events_2_n8n.handlers.send_data_to_n8n")
+    def test_receiver_prefers_database_webhook_url(self, task_mock):
+        """An active DB override should win over the settings fallback."""
+        WebhookConfig.objects.create(
+            event=self.metadata.event_type,
+            url="https://db.example.com/webhook",
+        )
+
+        send_enrollment_data_to_webhook(
+            signal=COURSE_ENROLLMENT_CREATED,
+            sender=None,
+            enrollment=self.enrollment,
+            metadata=self.metadata,
+        )
+
+        self.assertEqual(task_mock.delay.call_args[0][0], "https://db.example.com/webhook")
+
+    @override_settings(N8N_ENROLLMENT_WEBHOOK="https://settings.example.com/webhook")
+    @patch("openedx_events_2_n8n.handlers.send_data_to_n8n")
+    def test_receiver_falls_back_to_settings_when_database_override_is_inactive(
+        self, task_mock
+    ):
+        """Inactive DB rows should not override the settings value."""
+        WebhookConfig.objects.create(
+            event=self.metadata.event_type,
+            url="https://db.example.com/webhook",
+            is_active=False,
+        )
+
+        send_enrollment_data_to_webhook(
+            signal=COURSE_ENROLLMENT_CREATED,
+            sender=None,
+            enrollment=self.enrollment,
+            metadata=self.metadata,
+        )
+
+        self.assertEqual(
+            task_mock.delay.call_args[0][0],
+            "https://settings.example.com/webhook",
+        )
 
 
 class PersistentGradeEventsTest(TestCase):
@@ -220,4 +307,51 @@ class PersistentGradeEventsTest(TestCase):
                 "id": task_mock.delay.call_args[0][1]["event_metadata"]["id"],
                 "time": task_mock.delay.call_args[0][1]["event_metadata"]["time"],
             },
+        )
+        self.assertEqual(task_mock.delay.call_args[0][0], "https://webhook.site")
+
+    @override_settings(
+        N8N_PERSISTENT_GRADE_COURSE_WEBHOOK="https://settings.example.com/webhook"
+    )
+    @patch("openedx_events_2_n8n.handlers.send_data_to_n8n")
+    def test_receiver_prefers_database_webhook_url(self, task_mock):
+        """An active DB override should win over the settings fallback."""
+        WebhookConfig.objects.create(
+            event=self.metadata.event_type,
+            url="https://db.example.com/webhook",
+        )
+
+        send_persistent_grade_course_data_to_webhook(
+            signal=PERSISTENT_GRADE_SUMMARY_CHANGED,
+            sender=None,
+            grade=self.grade,
+            metadata=self.metadata,
+        )
+
+        self.assertEqual(task_mock.delay.call_args[0][0], "https://db.example.com/webhook")
+
+    @override_settings(
+        N8N_PERSISTENT_GRADE_COURSE_WEBHOOK="https://settings.example.com/webhook"
+    )
+    @patch("openedx_events_2_n8n.handlers.send_data_to_n8n")
+    def test_receiver_falls_back_to_settings_when_database_override_is_inactive(
+        self, task_mock
+    ):
+        """Inactive DB rows should not override the settings value."""
+        WebhookConfig.objects.create(
+            event=self.metadata.event_type,
+            url="https://db.example.com/webhook",
+            is_active=False,
+        )
+
+        send_persistent_grade_course_data_to_webhook(
+            signal=PERSISTENT_GRADE_SUMMARY_CHANGED,
+            sender=None,
+            grade=self.grade,
+            metadata=self.metadata,
+        )
+
+        self.assertEqual(
+            task_mock.delay.call_args[0][0],
+            "https://settings.example.com/webhook",
         )
