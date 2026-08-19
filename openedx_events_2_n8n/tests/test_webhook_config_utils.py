@@ -1,14 +1,14 @@
-"""Tests for webhook configuration URL resolution."""
+"""Tests for webhook configuration resolution."""
 
 from django.core.cache import cache
 from django.test import TestCase
 
 from openedx_events_2_n8n.models import CACHE_KEY_TEMPLATE, WebhookConfig
-from openedx_events_2_n8n.utils import get_webhook_url
+from openedx_events_2_n8n.utils import get_webhook_config
 
 
-class GetWebhookUrlTest(TestCase):
-    """Tests for get_webhook_url."""
+class GetWebhookConfigTest(TestCase):
+    """Tests for get_webhook_config."""
 
     def setUp(self):
         super().setUp()
@@ -25,16 +25,16 @@ class GetWebhookUrlTest(TestCase):
         )
 
         self.assertEqual(
-            get_webhook_url(self.event_type, self.fallback_url),
+            get_webhook_config(self.event_type, self.fallback_url)["url"],
             "https://db.example.com/webhook/registration",
         )
 
     def test_returns_settings_fallback_when_no_db_override_exists(self):
         """Without a DB row, settings should still drive the webhook URL."""
-        self.assertEqual(
-            get_webhook_url(self.event_type, self.fallback_url),
-            self.fallback_url,
-        )
+        config = get_webhook_config(self.event_type, self.fallback_url)
+
+        self.assertEqual(config["url"], self.fallback_url)
+        self.assertEqual(config["auth_type"], WebhookConfig.AuthType.NONE)
 
     def test_returns_settings_fallback_when_db_override_is_inactive(self):
         """Inactive DB rows should be ignored."""
@@ -45,7 +45,7 @@ class GetWebhookUrlTest(TestCase):
         )
 
         self.assertEqual(
-            get_webhook_url(self.event_type, self.fallback_url),
+            get_webhook_config(self.event_type, self.fallback_url)["url"],
             self.fallback_url,
         )
 
@@ -57,7 +57,7 @@ class GetWebhookUrlTest(TestCase):
         )
 
         self.assertEqual(
-            get_webhook_url(self.event_type, self.fallback_url),
+            get_webhook_config(self.event_type, self.fallback_url)["url"],
             self.fallback_url,
         )
 
@@ -66,17 +66,45 @@ class GetWebhookUrlTest(TestCase):
         cache_key = CACHE_KEY_TEMPLATE.format(event=self.event_type)
 
         self.assertEqual(
-            get_webhook_url(self.event_type, self.fallback_url),
+            get_webhook_config(self.event_type, self.fallback_url)["url"],
             self.fallback_url,
         )
-        self.assertEqual(cache.get(cache_key), "")
+        self.assertIsNone(cache.get(cache_key))
 
     def test_uses_cached_db_value_without_hitting_database(self):
-        """A cached DB URL should be reused directly on the next lookup."""
+        """A cached DB config should be reused directly on the next lookup."""
         cache_key = CACHE_KEY_TEMPLATE.format(event=self.event_type)
-        cache.set(cache_key, "https://cached.example.com/webhook/registration", 300)
+        cache.set(
+            cache_key,
+            {
+                "url": "https://cached.example.com/webhook/registration",
+                "auth_type": WebhookConfig.AuthType.NONE,
+                "basic_auth_username": "",
+                "basic_auth_password": "",
+                "header_auth_name": "",
+                "header_auth_value": "",
+                "jwt_auth_secret": "",
+            },
+            300,
+        )
 
         self.assertEqual(
-            get_webhook_url(self.event_type, self.fallback_url),
+            get_webhook_config(self.event_type, self.fallback_url)["url"],
             "https://cached.example.com/webhook/registration",
         )
+
+    def test_returns_configured_auth_fields(self):
+        """DB-configured auth fields should be included in the resolved config."""
+        WebhookConfig.objects.create(
+            event=self.event_type,
+            url="https://db.example.com/webhook/registration",
+            auth_type=WebhookConfig.AuthType.HEADER,
+            header_auth_name="Authorization",
+            header_auth_value="secret-token",
+        )
+
+        config = get_webhook_config(self.event_type, self.fallback_url)
+
+        self.assertEqual(config["auth_type"], WebhookConfig.AuthType.HEADER)
+        self.assertEqual(config["header_auth_name"], "Authorization")
+        self.assertEqual(config["header_auth_value"], "secret-token")

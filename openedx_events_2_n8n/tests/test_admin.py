@@ -19,5 +19,5 @@ class WebhookConfigAdminTest(TestCase):
 
         self.assertEqual(
             model_admin.list_display,
-            ("event", "url", "is_active", "modified"),
+            ("event", "event_value", "url", "auth_type", "is_active", "modified"),
         )

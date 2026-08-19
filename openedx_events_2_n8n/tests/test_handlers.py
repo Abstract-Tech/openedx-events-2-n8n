@@ -86,7 +86,7 @@ class RegistrationCompletedReceiverTest(TestCase):
                 "time": task_mock.delay.call_args[0][1]["event_metadata"]["time"],
             },
         )
-        self.assertEqual(task_mock.delay.call_args[0][0], "https://webhook.site")
+        self.assertEqual(task_mock.delay.call_args[0][0]["url"], "https://webhook.site")
 
     @override_settings(N8N_REGISTRATION_WEBHOOK="https://settings.example.com/webhook")
     @patch("openedx_events_2_n8n.handlers.send_data_to_n8n")
@@ -104,7 +104,7 @@ class RegistrationCompletedReceiverTest(TestCase):
             metadata=self.metadata,
         )
 
-        self.assertEqual(task_mock.delay.call_args[0][0], "https://db.example.com/webhook")
+        self.assertEqual(task_mock.delay.call_args[0][0]["url"], "https://db.example.com/webhook")
 
     @override_settings(N8N_REGISTRATION_WEBHOOK="https://settings.example.com/webhook")
     @patch("openedx_events_2_n8n.handlers.send_data_to_n8n")
@@ -126,7 +126,7 @@ class RegistrationCompletedReceiverTest(TestCase):
         )
 
         self.assertEqual(
-            task_mock.delay.call_args[0][0],
+            task_mock.delay.call_args[0][0]["url"],
             "https://settings.example.com/webhook",
         )
 
@@ -199,7 +199,7 @@ class EnrollmentCreatedReceiverTest(TestCase):
                 "time": task_mock.delay.call_args[0][1]["event_metadata"]["time"],
             },
         )
-        self.assertEqual(task_mock.delay.call_args[0][0], "https://webhook.site")
+        self.assertEqual(task_mock.delay.call_args[0][0]["url"], "https://webhook.site")
 
     @override_settings(N8N_ENROLLMENT_WEBHOOK="https://settings.example.com/webhook")
     @patch("openedx_events_2_n8n.handlers.send_data_to_n8n")
@@ -217,7 +217,7 @@ class EnrollmentCreatedReceiverTest(TestCase):
             metadata=self.metadata,
         )
 
-        self.assertEqual(task_mock.delay.call_args[0][0], "https://db.example.com/webhook")
+        self.assertEqual(task_mock.delay.call_args[0][0]["url"], "https://db.example.com/webhook")
 
     @override_settings(N8N_ENROLLMENT_WEBHOOK="https://settings.example.com/webhook")
     @patch("openedx_events_2_n8n.handlers.send_data_to_n8n")
@@ -239,7 +239,7 @@ class EnrollmentCreatedReceiverTest(TestCase):
         )
 
         self.assertEqual(
-            task_mock.delay.call_args[0][0],
+            task_mock.delay.call_args[0][0]["url"],
             "https://settings.example.com/webhook",
         )
 
@@ -308,7 +308,7 @@ class PersistentGradeEventsTest(TestCase):
                 "time": task_mock.delay.call_args[0][1]["event_metadata"]["time"],
             },
         )
-        self.assertEqual(task_mock.delay.call_args[0][0], "https://webhook.site")
+        self.assertEqual(task_mock.delay.call_args[0][0]["url"], "https://webhook.site")
 
     @override_settings(
         N8N_PERSISTENT_GRADE_COURSE_WEBHOOK="https://settings.example.com/webhook"
@@ -328,7 +328,7 @@ class PersistentGradeEventsTest(TestCase):
             metadata=self.metadata,
         )
 
-        self.assertEqual(task_mock.delay.call_args[0][0], "https://db.example.com/webhook")
+        self.assertEqual(task_mock.delay.call_args[0][0]["url"], "https://db.example.com/webhook")
 
     @override_settings(
         N8N_PERSISTENT_GRADE_COURSE_WEBHOOK="https://settings.example.com/webhook"
@@ -352,6 +352,6 @@ class PersistentGradeEventsTest(TestCase):
         )
 
         self.assertEqual(
-            task_mock.delay.call_args[0][0],
+            task_mock.delay.call_args[0][0]["url"],
             "https://settings.example.com/webhook",
         )

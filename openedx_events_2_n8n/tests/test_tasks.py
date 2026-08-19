@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 from uuid import UUID
 
+import jwt
 from attr import asdict
 from ddt import data, ddt, unpack
 from django.test import TestCase
@@ -19,8 +20,19 @@ from openedx_events.learning.data import (
 )
 from requests.exceptions import RequestException
 
+from openedx_events_2_n8n.models import WebhookEvent
 from openedx_events_2_n8n.tasks import send_data_to_n8n
 from openedx_events_2_n8n.utils import serialize_course_key
+
+NO_AUTH_CONFIG = {
+    "url": "https://webhook.site",
+    "auth_type": "none",
+    "basic_auth_username": "",
+    "basic_auth_password": "",
+    "header_auth_name": "",
+    "header_auth_value": "",
+    "jwt_auth_secret": "",
+}
 
 
 @ddt
@@ -45,7 +57,6 @@ class SendDataToN8nTaskTest(TestCase):
 
     @data(
         (
-            "https://webhook.site",
             {
                 "user": asdict(
                     UserData(
@@ -85,7 +96,6 @@ class SendDataToN8nTaskTest(TestCase):
             },
         ),
         (
-            "https://webhook.site",
             {
                 "enrollment": asdict(
                     CourseEnrollmentData(
@@ -143,7 +153,6 @@ class SendDataToN8nTaskTest(TestCase):
             },
         ),
         (
-            "https://webhook.site",
             {
                 "grade": asdict(
                     PersistentCourseGradeData(
@@ -195,7 +204,7 @@ class SendDataToN8nTaskTest(TestCase):
     @unpack
     @patch("openedx_events_2_n8n.tasks.post")
     def test_send_data_to_n8n_task_success(
-        self, webhook_url, payload, expected_payload, post_mock
+        self, payload, expected_payload, post_mock
     ):
         """
         Test that send_data_to_n8n is making the correct request to n8n.
@@ -203,14 +212,14 @@ class SendDataToN8nTaskTest(TestCase):
         Expected Behavior:
             - The request.post method is called with the correct arguments.
         """
-        send_data_to_n8n(webhook_url, payload)  # pylint: disable=no-value-for-parameter
+        send_data_to_n8n(NO_AUTH_CONFIG, payload)  # pylint: disable=no-value-for-parameter
 
         json.dumps(post_mock.call_args.kwargs["json"])
         self.assertLessEqual(
             expected_payload.items(),
             post_mock.call_args.kwargs["json"].items(),
         )
-        self.assertEqual(post_mock.call_args.args[0], webhook_url)
+        self.assertEqual(post_mock.call_args.args[0], NO_AUTH_CONFIG["url"])
         self.assertEqual(
             post_mock.call_args.kwargs["timeout"],
             5,
@@ -224,7 +233,7 @@ class SendDataToN8nTaskTest(TestCase):
         event_id = UUID("b1be2fac-1af1-11ec-bdf4-0242ac12000b")
 
         send_data_to_n8n(  # pylint: disable=no-value-for-parameter
-            "https://webhook.site",
+            NO_AUTH_CONFIG,
             {"event_metadata": {"id": event_id}},
         )
 
@@ -245,7 +254,7 @@ class SendDataToN8nTaskTest(TestCase):
 
         with self.assertRaises(RequestException):
             send_data_to_n8n(  # pylint: disable=no-value-for-parameter
-                "https://webhook.site", {}
+                NO_AUTH_CONFIG, {}
             )
 
         post_mock.assert_called_once()
@@ -253,3 +262,103 @@ class SendDataToN8nTaskTest(TestCase):
             post_mock.call_args.kwargs["timeout"],
             5,
         )
+
+    @patch("openedx_events_2_n8n.tasks.post")
+    def test_send_data_to_n8n_no_auth_sends_no_auth_kwargs(self, post_mock):
+        """No auth config should not add auth or headers kwargs."""
+        send_data_to_n8n(NO_AUTH_CONFIG, {})  # pylint: disable=no-value-for-parameter
+
+        self.assertNotIn("auth", post_mock.call_args.kwargs)
+        self.assertNotIn("headers", post_mock.call_args.kwargs)
+
+    @patch("openedx_events_2_n8n.tasks.post")
+    def test_send_data_to_n8n_basic_auth(self, post_mock):
+        """Basic auth config should send an HTTPBasicAuth with the configured credentials."""
+        send_data_to_n8n(  # pylint: disable=no-value-for-parameter
+            {**NO_AUTH_CONFIG, "auth_type": "basic", "basic_auth_username": "user", "basic_auth_password": "pass"},
+            {},
+        )
+
+        request_auth = post_mock.call_args.kwargs["auth"]
+        self.assertEqual(request_auth.username, "user")
+        self.assertEqual(request_auth.password, "pass")
+
+    @patch("openedx_events_2_n8n.tasks.post")
+    def test_send_data_to_n8n_header_auth(self, post_mock):
+        """Header auth config should send the configured header name and value."""
+        send_data_to_n8n(  # pylint: disable=no-value-for-parameter
+            {
+                **NO_AUTH_CONFIG,
+                "auth_type": "header",
+                "header_auth_name": "X-Api-Key",
+                "header_auth_value": "secret",
+            },
+            {},
+        )
+
+        self.assertEqual(
+            post_mock.call_args.kwargs["headers"], {"X-Api-Key": "secret"}
+        )
+
+    @patch("openedx_events_2_n8n.tasks.post")
+    def test_send_data_to_n8n_jwt_auth(self, post_mock):
+        """JWT auth config should send a bearer token signed with the configured secret."""
+        send_data_to_n8n(  # pylint: disable=no-value-for-parameter
+            {**NO_AUTH_CONFIG, "auth_type": "jwt", "jwt_auth_secret": "a-sufficiently-long-shared-secret-1234"},
+            {},
+        )
+
+        auth_header = post_mock.call_args.kwargs["headers"]["Authorization"]
+        self.assertTrue(auth_header.startswith("Bearer "))
+        token = auth_header.removeprefix("Bearer ")
+        decoded = jwt.decode(token, "a-sufficiently-long-shared-secret-1234", algorithms=["HS256"])
+        self.assertIn("exp", decoded)
+
+    @patch("openedx_events_2_n8n.tasks.post")
+    def test_send_data_to_n8n_logs_success(self, post_mock):
+        """A successful send should create a WebhookEvent history row."""
+        post_mock.return_value.ok = True
+        post_mock.return_value.status_code = 200
+        post_mock.return_value.text = "ok"
+
+        send_data_to_n8n(  # pylint: disable=no-value-for-parameter
+            NO_AUTH_CONFIG,
+            {"event_metadata": {"event_type": "some.event.v1"}},
+        )
+
+        event = WebhookEvent.objects.get()
+        self.assertEqual(event.event_type, "some.event.v1")
+        self.assertEqual(event.url, NO_AUTH_CONFIG["url"])
+        self.assertTrue(event.is_success)
+        self.assertEqual(event.status_code, 200)
+        self.assertEqual(event.response_body, "ok")
+
+    @patch("openedx_events_2_n8n.tasks.post")
+    def test_send_data_to_n8n_logs_failure(self, post_mock):
+        """A failed send should create a WebhookEvent history row with the error."""
+        post_mock.side_effect = RequestException("boom")
+
+        with self.assertRaises(RequestException):
+            send_data_to_n8n(  # pylint: disable=no-value-for-parameter
+                NO_AUTH_CONFIG,
+                {"event_metadata": {"event_type": "some.event.v1"}},
+            )
+
+        event = WebhookEvent.objects.get()
+        self.assertEqual(event.event_type, "some.event.v1")
+        self.assertFalse(event.is_success)
+        self.assertIn("boom", event.error_message)
+
+    @patch("openedx_events_2_n8n.tasks.post")
+    def test_send_data_to_n8n_skips_duplicate_already_successful_event(self, post_mock):
+        """A duplicate signal for an already-successfully-sent event should not POST again."""
+        post_mock.return_value.ok = True
+        post_mock.return_value.status_code = 200
+        post_mock.return_value.text = "ok"
+        payload = {"event_metadata": {"event_type": "some.event.v1", "id": "dupe-id"}}
+
+        send_data_to_n8n(NO_AUTH_CONFIG, payload)  # pylint: disable=no-value-for-parameter
+        send_data_to_n8n(NO_AUTH_CONFIG, payload)  # pylint: disable=no-value-for-parameter
+
+        post_mock.assert_called_once()
+        self.assertEqual(WebhookEvent.objects.count(), 1)
