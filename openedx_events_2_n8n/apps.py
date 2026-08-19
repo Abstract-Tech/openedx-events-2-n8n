@@ -11,6 +11,7 @@ class OpenedxEvents2N8nConfig(AppConfig):
     """
 
     name = "openedx_events_2_n8n"
+    verbose_name = "Open edX Events to n8n"
 
     plugin_app = {
         "settings_config": {
