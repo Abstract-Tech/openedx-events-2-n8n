@@ -5,3 +5,4 @@ django                   # Web application framework
 openedx-events           # Open edX Events package
 requests
 celery
+pyjwt                    # Sign JWT auth tokens for n8n webhooks
