@@ -27,6 +27,14 @@ class WebhookConfig(models.Model):
             "Persistent grade summary changed",
         )
 
+    class AuthType(models.TextChoices):
+        """Authentication types supported by n8n's Webhook node."""
+
+        NONE = "none", "None"
+        BASIC = "basic", "Basic Auth"
+        HEADER = "header", "Header Auth"
+        JWT = "jwt", "JWT Auth"
+
     event = models.CharField(
         max_length=255,
         unique=True,
@@ -38,6 +46,23 @@ class WebhookConfig(models.Model):
     )
     url = models.URLField()
     is_active = models.BooleanField(default=True)
+    auth_type = models.CharField(
+        max_length=10,
+        choices=AuthType.choices,
+        default=AuthType.NONE,
+        help_text="Matches the credential type configured on the n8n Webhook node.",
+    )
+    basic_auth_username = models.CharField(max_length=255, blank=True)
+    basic_auth_password = models.CharField(max_length=255, blank=True)
+    header_auth_name = models.CharField(
+        max_length=255, blank=True, help_text="e.g. Authorization"
+    )
+    header_auth_value = models.CharField(max_length=255, blank=True)
+    jwt_auth_secret = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Passphrase configured on n8n's JWT Auth credential (HS256).",
+    )
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
 

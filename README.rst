@@ -166,6 +166,55 @@ To use this plugin, follow these steps:
 
    You can use both the Django admin and the Tutor plugin settings at the same time. When a ``WebhookConfig`` entry exists, is active, and has a URL for an event, it takes priority over the settings value; the settings value is only used as a fallback.
 
+   Each ``WebhookConfig`` entry can also be configured with the authentication type used by the target n8n Webhook node's credential (matching `n8n's Webhook credentials <https://docs.n8n.io/integrations/builtin/credentials/webhook/>`_): ``None``, ``Basic Auth``, ``Header Auth``, or ``JWT Auth``. Fill in only the fields for the selected type.
+
+Testing Each Auth Type
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Set the n8n Webhook node's credential to match, save a ``WebhookConfig`` with the same values, then trigger the event (e.g. enroll a user). Check ``/admin/openedx_events_2_n8n/webhookevent/`` for the delivery result (status code, response body, error).
+
+**None**
+
+- ``WebhookConfig``: ``auth_type=none``.
+- n8n Webhook node: credential set to *None*.
+- Verify directly with curl:
+
+.. code-block:: bash
+
+     curl -X POST https://<your-n8n-domain>/webhook/<path> -H "Content-Type: application/json" -d '{"ping": "test"}'
+
+**Basic Auth**
+
+- ``WebhookConfig``: ``auth_type=basic``, ``basic_auth_username``, ``basic_auth_password``.
+- n8n Webhook node: credential type *Basic Auth* with matching username/password.
+- Verify directly with curl:
+
+.. code-block:: bash
+
+     curl -X POST https://<your-n8n-domain>/webhook/<path> -u "<username>:<password>" -H "Content-Type: application/json" -d '{"ping": "test"}'
+
+**Header Auth**
+
+- ``WebhookConfig``: ``auth_type=header``, ``header_auth_name`` (e.g. ``X-Api-Key``), ``header_auth_value``.
+- n8n Webhook node: credential type *Header Auth* with the same header name/value.
+- Verify directly with curl:
+
+.. code-block:: bash
+
+     curl -X POST https://<your-n8n-domain>/webhook/<path> -H "X-Api-Key: <header_auth_value>" -H "Content-Type: application/json" -d '{"ping": "test"}'
+
+**JWT Auth**
+
+- ``WebhookConfig``: ``auth_type=jwt``, ``jwt_auth_secret`` (HS256 passphrase).
+- n8n Webhook node: credential type *JWT Auth*, algorithm HS256, same secret.
+- The plugin signs a short-lived token itself (60s TTL) and sends it as ``Authorization: Bearer <token>``; to verify manually, mint a token with the same secret:
+
+.. code-block:: bash
+
+     python -c "import jwt,time; print(jwt.encode({'iat': int(time.time()), 'exp': int(time.time())+60}, '<jwt_auth_secret>', algorithm='HS256'))"
+
+     curl -X POST https://<your-n8n-domain>/webhook/<path> -H "Authorization: Bearer <token-from-above>" -H "Content-Type: application/json" -d '{"ping": "test"}'
+
 4. Configure n8n webhooks to receive JSON event data, follow the instructions available in the n8n documentation.
 5. Trigger the events by registering a new user, enrolling in a course, or updating a grade in the Open edX platform.
 

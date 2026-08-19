@@ -39,20 +39,40 @@ def make_json_serializable(data):
     return json.loads(json.dumps(data, cls=DjangoJSONEncoder))
 
 
-def get_webhook_url(event_type, fallback_url):
-    """Resolve a webhook URL with DB priority and settings fallback."""
+AUTH_FIELDS = (
+    "url",
+    "auth_type",
+    "basic_auth_username",
+    "basic_auth_password",
+    "header_auth_name",
+    "header_auth_value",
+    "jwt_auth_secret",
+)
+
+
+def get_webhook_config(event_type, fallback_url):
+    """Resolve a webhook's URL and auth settings, DB priority with settings fallback."""
     cache_key = CACHE_KEY_TEMPLATE.format(event=event_type)
     cached = cache.get(cache_key, _MISS)
     if cached is _MISS:
         cached = (
             WebhookConfig.objects.filter(event=event_type, is_active=True)
             .exclude(url="")
-            .values_list("url", flat=True)
+            .values(*AUTH_FIELDS)
             .first()
-            or ""
         )
         cache.set(cache_key, cached, timeout=CACHE_TTL)
-    return cached or fallback_url
+    if cached:
+        return cached
+    return {
+        "url": fallback_url,
+        "auth_type": WebhookConfig.AuthType.NONE,
+        "basic_auth_username": "",
+        "basic_auth_password": "",
+        "header_auth_name": "",
+        "header_auth_value": "",
+        "jwt_auth_secret": "",
+    }
 
 
 def serialize_course_key(inst, field, value):  # pylint: disable=unused-argument
