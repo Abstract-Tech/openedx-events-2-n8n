@@ -11,14 +11,30 @@ CACHE_KEY_TEMPLATE = "openedx_events_2_n8n:webhook_url:{event}"
 class WebhookConfig(models.Model):
     """Admin-configurable webhook URL for an openedx-events event type."""
 
+    class Events(models.TextChoices):
+        """List of openedx-events event types that can be configured."""
+
+        STUDENT_REGISTRATION_COMPLETED = (
+            "org.openedx.learning.student.registration.completed.v1",
+            "Student registration completed",
+        )
+        COURSE_ENROLLMENT_CREATED = (
+            "org.openedx.learning.course.enrollment.created.v1",
+            "Student enrollment created",
+        )
+        PERSISTENT_GRADE_SUMMARY_CHANGED = (
+            "org.openedx.learning.course.persistent_grade_summary.changed.v1",
+            "Persistent grade summary changed",
+        )
+
     event = models.CharField(
         max_length=255,
         unique=True,
         db_index=True,
         help_text=(
-            "The openedx-events event_type this webhook applies to, e.g. "
-            "org.openedx.learning.student.registration.completed.v1"
+            "The openedx-events event_type this webhook applies to, e.g."
         ),
+        choices=Events.choices,
     )
     url = models.URLField()
     is_active = models.BooleanField(default=True)
