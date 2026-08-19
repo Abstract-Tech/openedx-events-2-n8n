@@ -1,7 +1,7 @@
 Open edX Events 2 n8n
-########################
+#####################
 
-|ci-badge| |license-badge|
+|pypi-badge| |ci-badge| |license-badge|
 
 A ready-to-use repository demonstrating how to use Open edX Events for building workflows and automating integrations. It serves as a starting point for more advanced use cases. Explore `Real-Life Use Cases for Open edX Events`_ to see more complex implementations from the Open edX Community
 
@@ -34,10 +34,11 @@ Then follow the steps below to set up your development environment:
     # Clone the repository
     git clone git@github.com:Abstract-Tech/openedx-events-2-n8n.git
     # Mount it to lms container
-    tutor mounts add openedx-events-2-n8n /openedx-events-2-n8n
+    tutor mounts add openedx-events-2-n8n
     # Install dependencies
-    tutor local run lms pip install -e /openedx-events-2-n8n
-
+    tutor dev exec lms bash
+    pip install -e /mnt/openedx-events-2-n8n
+    python manage.py lms migrate
 
 Deploying
 *********
@@ -139,7 +140,9 @@ To use this plugin, follow these steps:
 
      tutor local launch
 
-3. Create and enable an Inline Tutor plugin to configure the n8n webhooks:
+3. Configure webhook URLs via the Django admin (``/admin/openedx_events_2_n8n/webhookconfig/``) by creating a ``WebhookConfig`` entry per event type.
+
+   Alternatively, create and enable an Inline Tutor plugin to configure the n8n webhooks through Django settings:
 
 .. code-block:: python
 
@@ -160,6 +163,8 @@ To use this plugin, follow these steps:
 .. code-block:: bash
 
      tutor plugins enable n8n
+
+   You can use both the Django admin and the Tutor plugin settings at the same time. When a ``WebhookConfig`` entry exists, is active, and has a URL for an event, it takes priority over the settings value; the settings value is only used as a fallback.
 
 4. Configure n8n webhooks to receive JSON event data, follow the instructions available in the n8n documentation.
 5. Trigger the events by registering a new user, enrolling in a course, or updating a grade in the Open edX platform.
@@ -262,3 +267,7 @@ Please do not report security issues in public. Contact the Abstract Technology 
 .. |license-badge| image:: https://img.shields.io/github/license/Abstract-Tech/openedx-events-2-n8n.svg
     :target: https://github.com/Abstract-Tech/openedx-events-2-n8n/blob/main/LICENSE.txt
     :alt: License
+
+.. |pypi-badge| image:: https://img.shields.io/pypi/v/openedx-events-2-n8n.svg
+    :target: https://pypi.org/project/openedx-events-2-n8n/
+    :alt: PyPI
