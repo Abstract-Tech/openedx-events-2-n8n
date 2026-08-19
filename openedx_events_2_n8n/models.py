@@ -93,3 +93,37 @@ def invalidate_cache_on_save(sender, instance, **kwargs):  # pylint: disable=unu
 def invalidate_cache_on_delete(sender, instance, **kwargs):  # pylint: disable=unused-argument
     """Clear the cached URL for this event after delete."""
     cache.delete(CACHE_KEY_TEMPLATE.format(event=instance.event))
+
+
+class WebhookEvent(models.Model):
+    """History of one attempt to send an openedx-event's data to n8n."""
+
+    event_type = models.CharField(max_length=255, db_index=True)
+    event_id = models.CharField(
+        max_length=36,
+        blank=True,
+        db_index=True,
+        help_text="event_metadata.id, used to deduplicate re-sent events.",
+    )
+    url = models.URLField()
+    payload = models.JSONField()
+    is_success = models.BooleanField(default=False)
+    status_code = models.PositiveSmallIntegerField(null=True, blank=True)
+    response_body = models.TextField(blank=True)
+    error_message = models.TextField(blank=True)
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        """Meta options for WebhookEvent."""
+
+        ordering = ("-created",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event_id"],
+                condition=models.Q(is_success=True),
+                name="unique_successful_event_id",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.event_type} -> {self.url} ({'ok' if self.is_success else 'failed'})"

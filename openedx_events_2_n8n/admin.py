@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 
-from openedx_events_2_n8n.models import WebhookConfig
+from openedx_events_2_n8n.models import WebhookConfig, WebhookEvent
 
 
 @admin.register(WebhookConfig)
@@ -40,3 +40,29 @@ class WebhookConfigAdmin(admin.ModelAdmin):
     def event_value(self, obj):
         """Show the raw event_type string (list_display renders 'event' as its label)."""
         return obj.event
+
+
+@admin.register(WebhookEvent)
+class WebhookEventAdmin(admin.ModelAdmin):
+    """Read-only history of events sent to n8n and their outcome."""
+
+    list_display = ("event_type", "event_id", "url", "is_success", "status_code", "created")
+    list_filter = ("is_success", "event_type")
+    search_fields = ("event_type", "event_id", "url")
+    readonly_fields = (
+        "event_type",
+        "event_id",
+        "url",
+        "payload",
+        "is_success",
+        "status_code",
+        "response_body",
+        "error_message",
+        "created",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
