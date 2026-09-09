@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/tutor-contrib-delete-course/
+      url: https://pypi.org/project/tutor-contrib-maintenance/
     permissions:
       contents: read
       id-token: write
